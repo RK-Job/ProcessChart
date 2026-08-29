@@ -5,6 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>1ヶ月工程表</title>
 <link rel="stylesheet" href="css/style.css">
+<script>
+(function () {
+  try {
+    var mode = localStorage.getItem('monthlyGanttTheme');
+    if (mode === 'light' || mode === 'dark') {
+      document.documentElement.dataset.theme = mode;
+    }
+  } catch (e) {}
+})();
+</script>
 </head>
 <body>
 
@@ -17,6 +27,11 @@
     <button id="btn-save" type="button">JSON保存</button>
     <button id="btn-print" type="button">印刷 / PDF出力</button>
     <button id="btn-clear" type="button" class="danger">クリア</button>
+    <div class="theme-switch" role="radiogroup" aria-label="表示テーマ">
+      <button type="button" class="theme-option" data-theme-value="system" title="システム設定に合わせる">自動</button>
+      <button type="button" class="theme-option" data-theme-value="light" title="ライトモード">ライト</button>
+      <button type="button" class="theme-option" data-theme-value="dark" title="ダークモード">ダーク</button>
+    </div>
   </div>
 </header>
 

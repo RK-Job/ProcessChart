@@ -4,6 +4,7 @@
   var CELL_WIDTH = 28;
   var ROW_HEIGHT = 34;
   var STORAGE_KEY = 'monthlyGanttDraft';
+  var THEME_STORAGE_KEY = 'monthlyGanttTheme';
   var SCHEMA_VERSION = '1.0';
 
   var COLOR_PALETTE = [
@@ -74,8 +75,43 @@
     modalOk: document.getElementById('modal-ok'),
     modalCancel: document.getElementById('modal-cancel'),
     modalDelete: document.getElementById('modal-delete'),
-    toast: document.getElementById('toast')
+    toast: document.getElementById('toast'),
+    themeOptions: document.querySelectorAll('.theme-option')
   };
+
+  // ---------- Theme (light / dark / system) ----------
+  function applyTheme(mode) {
+    if (mode === 'light' || mode === 'dark') {
+      document.documentElement.dataset.theme = mode;
+    } else {
+      delete document.documentElement.dataset.theme;
+    }
+    el.themeOptions.forEach(function (btn) {
+      btn.classList.toggle('active', btn.dataset.themeValue === mode);
+    });
+  }
+
+  function initTheme() {
+    var stored = 'system';
+    try {
+      stored = localStorage.getItem(THEME_STORAGE_KEY) || 'system';
+    } catch (e) {
+      stored = 'system';
+    }
+    applyTheme(stored);
+
+    el.themeOptions.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var mode = btn.dataset.themeValue;
+        applyTheme(mode);
+        try {
+          localStorage.setItem(THEME_STORAGE_KEY, mode);
+        } catch (e) {
+          // localStorage unavailable: theme choice won't persist across reloads
+        }
+      });
+    });
+  }
 
   // ---------- Rendering ----------
   function render() {
@@ -665,6 +701,7 @@
 
   // ---------- Init ----------
   function init() {
+    initTheme();
     buildColorPalette();
     var restored = restoreDraft();
     render();
