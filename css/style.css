@@ -125,7 +125,7 @@ button:disabled {
 }
 
 input[type="text"],
-input[type="month"],
+select,
 textarea {
   font-family: inherit;
   font-size: 13px;
@@ -134,6 +134,20 @@ textarea {
   border-radius: 4px;
   background: var(--color-surface);
   color: var(--color-text);
+}
+
+.year-month-picker {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.year-month-picker select {
+  flex: 1;
+  min-width: 0;
+}
+.year-month-picker span {
+  color: var(--color-text-muted);
+  font-size: 12px;
 }
 
 /* ---------- Toolbar ---------- */

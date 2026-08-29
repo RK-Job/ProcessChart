@@ -39,8 +39,13 @@
 
   <section class="project-info no-print-border" id="project-info">
     <div class="field">
-      <label for="input-year-month">対象年月</label>
-      <input id="input-year-month" type="month">
+      <label for="input-year">対象年月</label>
+      <div class="year-month-picker">
+        <select id="input-year" aria-label="対象年"></select>
+        <span>年</span>
+        <select id="input-month" aria-label="対象月"></select>
+        <span>月</span>
+      </div>
     </div>
     <div class="field">
       <label for="input-title">工事名称</label>

@@ -54,7 +54,8 @@
 
   // ---------- DOM refs ----------
   var el = {
-    yearMonth: document.getElementById('input-year-month'),
+    year: document.getElementById('input-year'),
+    month: document.getElementById('input-month'),
     title: document.getElementById('input-title'),
     manager: document.getElementById('input-manager'),
     company: document.getElementById('input-company'),
@@ -122,7 +123,10 @@
   }
 
   function renderProjectInfo() {
-    el.yearMonth.value = state.project.year_month;
+    var parts = state.project.year_month.split('-');
+    ensureYearOption(parts[0]);
+    el.year.value = parts[0];
+    el.month.value = String(Number(parts[1]));
     el.title.value = state.project.title;
     el.manager.value = state.project.manager;
     el.company.value = state.project.company;
@@ -508,12 +512,50 @@
   });
 
   // ---------- Project info bindings ----------
-  el.yearMonth.addEventListener('change', function () {
-    if (!el.yearMonth.value) return;
-    state.project.year_month = el.yearMonth.value;
+  function buildYearMonthOptions() {
+    var currentYear = new Date().getFullYear();
+    el.year.innerHTML = '';
+    for (var y = currentYear - 5; y <= currentYear + 10; y++) {
+      var opt = document.createElement('option');
+      opt.value = String(y);
+      opt.textContent = y + '年';
+      el.year.appendChild(opt);
+    }
+    el.month.innerHTML = '';
+    for (var m = 1; m <= 12; m++) {
+      var mOpt = document.createElement('option');
+      mOpt.value = String(m);
+      mOpt.textContent = m + '月';
+      el.month.appendChild(mOpt);
+    }
+  }
+
+  function ensureYearOption(year) {
+    var exists = Array.prototype.some.call(el.year.options, function (opt) {
+      return opt.value === year;
+    });
+    if (exists) return;
+    var opt = document.createElement('option');
+    opt.value = year;
+    opt.textContent = year + '年';
+    el.year.appendChild(opt);
+    var sorted = Array.prototype.slice.call(el.year.options).sort(function (a, b) {
+      return Number(a.value) - Number(b.value);
+    });
+    sorted.forEach(function (o) {
+      el.year.appendChild(o);
+    });
+  }
+
+  function onYearMonthChange() {
+    var y = el.year.value;
+    var m = String(el.month.value).padStart(2, '0');
+    state.project.year_month = y + '-' + m;
     touch();
     render();
-  });
+  }
+  el.year.addEventListener('change', onYearMonthChange);
+  el.month.addEventListener('change', onYearMonthChange);
   el.title.addEventListener('input', function () {
     state.project.title = el.title.value;
     touch();
@@ -702,6 +744,7 @@
   // ---------- Init ----------
   function init() {
     initTheme();
+    buildYearMonthOptions();
     buildColorPalette();
     var restored = restoreDraft();
     render();
