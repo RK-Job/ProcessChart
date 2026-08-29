@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>1ヶ月工程表</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<header class="toolbar no-print">
+  <div class="toolbar-title">1ヶ月工程表</div>
+  <div class="toolbar-actions">
+    <button id="btn-new" type="button">新規作成</button>
+    <button id="btn-open" type="button">JSONを開く</button>
+    <input id="file-input" type="file" accept="application/json,.json" hidden>
+    <button id="btn-save" type="button">JSON保存</button>
+    <button id="btn-print" type="button">印刷 / PDF出力</button>
+    <button id="btn-clear" type="button" class="danger">クリア</button>
+  </div>
+</header>
+
+<main id="app">
+
+  <section class="project-info no-print-border" id="project-info">
+    <div class="field">
+      <label for="input-year-month">対象年月</label>
+      <input id="input-year-month" type="month">
+    </div>
+    <div class="field">
+      <label for="input-title">工事名称</label>
+      <input id="input-title" type="text" placeholder="〇〇邸新築工事">
+    </div>
+    <div class="field">
+      <label for="input-manager">現場代理人</label>
+      <input id="input-manager" type="text" placeholder="山田 太郎">
+    </div>
+    <div class="field">
+      <label for="input-company">会社名</label>
+      <input id="input-company" type="text" placeholder="株式会社〇〇工務店">
+    </div>
+  </section>
+
+  <section class="gantt-wrapper">
+    <div class="chart-grid" id="chart-grid">
+      <div class="header-row" id="header-row">
+        <div class="label-header">
+          <span>作業項目</span>
+          <button id="btn-add-row" type="button" class="no-print">＋ 行追加</button>
+        </div>
+        <div class="days-header" id="days-header"></div>
+      </div>
+      <div class="body-rows" id="body-rows"></div>
+    </div>
+  </section>
+
+  <section class="remarks-area">
+    <label for="input-remarks">備考</label>
+    <textarea id="input-remarks" rows="3" placeholder="月間の注意事項・特記事項を入力してください"></textarea>
+  </section>
+
+</main>
+
+<div id="bar-modal" class="modal-overlay no-print" hidden>
+  <div class="modal">
+    <h3>工程バーの編集</h3>
+    <div class="field">
+      <label for="modal-label">工程名</label>
+      <input id="modal-label" type="text">
+    </div>
+    <div class="field">
+      <label>カラー</label>
+      <div class="color-palette" id="color-palette"></div>
+      <input id="modal-color" type="color">
+    </div>
+    <div class="modal-actions">
+      <button id="modal-delete" type="button" class="danger">このバーを削除</button>
+      <div class="modal-actions-right">
+        <button id="modal-cancel" type="button">キャンセル</button>
+        <button id="modal-ok" type="button" class="primary">OK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast" class="toast no-print" hidden></div>
+
+<script src="js/holidays.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
