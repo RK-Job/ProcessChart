@@ -136,18 +136,30 @@ textarea {
   color: var(--color-text);
 }
 
-.year-month-picker {
+.date-range-field {
+  flex: 1 1 380px;
+}
+.date-range-picker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.date-picker {
   display: flex;
   align-items: center;
   gap: 4px;
 }
-.year-month-picker select {
-  flex: 1;
+.date-picker select {
   min-width: 0;
 }
-.year-month-picker span {
+.date-picker span,
+.date-range-sep {
   color: var(--color-text-muted);
   font-size: 12px;
+}
+.date-range-sep {
+  font-size: 14px;
 }
 
 /* ---------- Toolbar ---------- */
@@ -184,9 +196,9 @@ textarea {
 }
 
 .project-info {
-  display: grid;
-  grid-template-columns: 1fr 2fr 1.4fr 1.6fr;
-  gap: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 16px;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 6px;
@@ -197,6 +209,7 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 4px;
+  flex: 1 1 200px;
 }
 
 .field label {
@@ -249,6 +262,26 @@ textarea {
 .label-header button {
   font-size: 11px;
   padding: 4px 8px;
+}
+
+.days-header-wrap {
+  display: flex;
+  flex-direction: column;
+}
+
+.month-group-header {
+  display: flex;
+}
+
+.month-group-cell {
+  flex: 0 0 auto;
+  text-align: center;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  padding: 3px 0;
+  border-right: 1px solid var(--color-border);
+  border-bottom: 1px solid var(--color-border);
 }
 
 .days-header {

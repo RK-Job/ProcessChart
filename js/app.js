@@ -5,7 +5,8 @@
   var ROW_HEIGHT = 34;
   var STORAGE_KEY = 'monthlyGanttDraft';
   var THEME_STORAGE_KEY = 'monthlyGanttTheme';
-  var SCHEMA_VERSION = '1.0';
+  var SCHEMA_VERSION = '2.0';
+  var MAX_RANGE_DAYS = 366;
 
   var COLOR_PALETTE = [
     '#4a90d9', '#e07b39', '#5cb85c', '#d9534f',
@@ -21,12 +22,49 @@
     return prefix + '_' + Date.now().toString(36) + '_' + uidCounter;
   }
 
-  function currentYearMonth() {
-    var now = new Date();
-    return now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+  // ---------- Date helpers ----------
+  function pad2(n) {
+    return String(n).padStart(2, '0');
+  }
+
+  function parseISODate(str) {
+    var p = str.split('-');
+    return new Date(Number(p[0]), Number(p[1]) - 1, Number(p[2]));
+  }
+
+  function formatISODate(date) {
+    return date.getFullYear() + '-' + pad2(date.getMonth() + 1) + '-' + pad2(date.getDate());
+  }
+
+  function addDays(date, n) {
+    var result = new Date(date);
+    result.setDate(result.getDate() + n);
+    return result;
+  }
+
+  function diffDays(a, b) {
+    var utcA = Date.UTC(a.getFullYear(), a.getMonth(), a.getDate());
+    var utcB = Date.UTC(b.getFullYear(), b.getMonth(), b.getDate());
+    return Math.round((utcA - utcB) / 86400000);
+  }
+
+  function daysInMonthOf(year, month) {
+    return new Date(year, month, 0).getDate();
+  }
+
+  function getDateRangeArray(startISO, endISO) {
+    var start = parseISODate(startISO);
+    var end = parseISODate(endISO);
+    var total = Math.min(Math.max(diffDays(end, start) + 1, 1), MAX_RANGE_DAYS);
+    var arr = [];
+    for (var i = 0; i < total; i++) arr.push(addDays(start, i));
+    return arr;
   }
 
   function createEmptyState() {
+    var now = new Date();
+    var start = new Date(now.getFullYear(), now.getMonth(), 1);
+    var end = new Date(now.getFullYear(), now.getMonth() + 1, 0);
     return {
       meta: {
         version: SCHEMA_VERSION,
@@ -35,7 +73,8 @@
         updated_by: ''
       },
       project: {
-        year_month: currentYearMonth(),
+        start_date: formatISODate(start),
+        end_date: formatISODate(end),
         title: '',
         manager: '',
         company: '',
@@ -45,21 +84,19 @@
     };
   }
 
-  function daysInMonth(yearMonth) {
-    var parts = yearMonth.split('-');
-    var y = Number(parts[0]);
-    var m = Number(parts[1]);
-    return new Date(y, m, 0).getDate();
-  }
-
   // ---------- DOM refs ----------
   var el = {
-    year: document.getElementById('input-year'),
-    month: document.getElementById('input-month'),
+    startYear: document.getElementById('input-start-year'),
+    startMonth: document.getElementById('input-start-month'),
+    startDay: document.getElementById('input-start-day'),
+    endYear: document.getElementById('input-end-year'),
+    endMonth: document.getElementById('input-end-month'),
+    endDay: document.getElementById('input-end-day'),
     title: document.getElementById('input-title'),
     manager: document.getElementById('input-manager'),
     company: document.getElementById('input-company'),
     remarks: document.getElementById('input-remarks'),
+    monthGroupHeader: document.getElementById('month-group-header'),
     daysHeader: document.getElementById('days-header'),
     bodyRows: document.getElementById('body-rows'),
     btnAddRow: document.getElementById('btn-add-row'),
@@ -123,10 +160,8 @@
   }
 
   function renderProjectInfo() {
-    var parts = state.project.year_month.split('-');
-    ensureYearOption(parts[0]);
-    el.year.value = parts[0];
-    el.month.value = String(Number(parts[1]));
+    syncDateSelects('start', state.project.start_date);
+    syncDateSelects('end', state.project.end_date);
     el.title.value = state.project.title;
     el.manager.value = state.project.manager;
     el.company.value = state.project.company;
@@ -134,16 +169,29 @@
   }
 
   function renderHeader() {
-    var dim = daysInMonth(state.project.year_month);
-    var parts = state.project.year_month.split('-');
-    var y = Number(parts[0]);
-    var m = Number(parts[1]);
+    var dates = getDateRangeArray(state.project.start_date, state.project.end_date);
+    var totalWidth = dates.length * CELL_WIDTH;
 
-    el.daysHeader.style.width = (dim * CELL_WIDTH) + 'px';
+    el.daysHeader.style.width = totalWidth + 'px';
+    el.monthGroupHeader.style.width = totalWidth + 'px';
     el.daysHeader.innerHTML = '';
+    el.monthGroupHeader.innerHTML = '';
 
-    for (var d = 1; d <= dim; d++) {
-      var date = new Date(y, m - 1, d);
+    var i = 0;
+    while (i < dates.length) {
+      var y = dates[i].getFullYear();
+      var m = dates[i].getMonth();
+      var j = i;
+      while (j < dates.length && dates[j].getFullYear() === y && dates[j].getMonth() === m) j++;
+      var groupCell = document.createElement('div');
+      groupCell.className = 'month-group-cell';
+      groupCell.style.width = ((j - i) * CELL_WIDTH) + 'px';
+      groupCell.textContent = y + '年' + (m + 1) + '月';
+      el.monthGroupHeader.appendChild(groupCell);
+      i = j;
+    }
+
+    dates.forEach(function (date) {
       var dow = date.getDay();
       var holidayName = window.JPHolidays.getHolidayName(date);
       var cell = document.createElement('div');
@@ -155,7 +203,7 @@
 
       var num = document.createElement('div');
       num.className = 'day-num';
-      num.textContent = String(d);
+      num.textContent = String(date.getDate());
       var wk = document.createElement('div');
       wk.className = 'day-wk';
       wk.textContent = ['日', '月', '火', '水', '木', '金', '土'][dow];
@@ -163,11 +211,12 @@
       cell.appendChild(num);
       cell.appendChild(wk);
       el.daysHeader.appendChild(cell);
-    }
+    });
   }
 
   function renderRows() {
-    var dim = daysInMonth(state.project.year_month);
+    var dates = getDateRangeArray(state.project.start_date, state.project.end_date);
+    var totalWidth = dates.length * CELL_WIDTH;
     el.bodyRows.innerHTML = '';
 
     state.rows.forEach(function (row, index) {
@@ -237,23 +286,18 @@
       // --- track cell ---
       var track = document.createElement('div');
       track.className = 'row-track';
-      track.style.width = (dim * CELL_WIDTH) + 'px';
+      track.style.width = totalWidth + 'px';
       track.dataset.rowId = row.id;
 
-      for (var d = 1; d <= dim; d++) {
-        var date = new Date(
-          Number(state.project.year_month.split('-')[0]),
-          Number(state.project.year_month.split('-')[1]) - 1,
-          d
-        );
+      dates.forEach(function (date, offset) {
         var dow = date.getDay();
         var isHoliday = dow === 0 || dow === 6 || !!window.JPHolidays.getHolidayName(date);
         var dayCell = document.createElement('div');
         dayCell.className = 'day-cell' + (isHoliday ? ' weekend' : '');
         dayCell.style.width = CELL_WIDTH + 'px';
-        dayCell.dataset.day = String(d);
+        dayCell.dataset.offset = String(offset);
         track.appendChild(dayCell);
-      }
+      });
 
       row.bars.forEach(function (bar) {
         track.appendChild(renderBar(row, bar));
@@ -270,10 +314,14 @@
   }
 
   function renderBar(row, bar) {
+    var rangeStart = parseISODate(state.project.start_date);
+    var startOffset = diffDays(parseISODate(bar.start_date), rangeStart);
+    var endOffset = diffDays(parseISODate(bar.end_date), rangeStart);
+
     var barEl = document.createElement('div');
     barEl.className = 'gantt-bar';
-    barEl.style.left = ((bar.start_day - 1) * CELL_WIDTH) + 'px';
-    barEl.style.width = ((bar.end_day - bar.start_day + 1) * CELL_WIDTH - 2) + 'px';
+    barEl.style.left = (startOffset * CELL_WIDTH) + 'px';
+    barEl.style.width = ((endOffset - startOffset + 1) * CELL_WIDTH - 2) + 'px';
     barEl.style.backgroundColor = bar.color;
     barEl.dataset.barId = bar.id;
     barEl.title = bar.label || '';
@@ -348,8 +396,8 @@
       if (evt.target.closest('.gantt-bar')) return;
       var cell = evt.target.closest('.day-cell');
       if (!cell) return;
-      var day = Number(cell.dataset.day);
-      creating = { startDay: day, endDay: day };
+      var offset = Number(cell.dataset.offset);
+      creating = { startOffset: offset, endOffset: offset };
       renderGhost();
       evt.preventDefault();
     });
@@ -358,11 +406,11 @@
       var existing = track.querySelector('.gantt-bar-ghost');
       if (existing) existing.remove();
       if (!creating) return;
-      var lo = Math.min(creating.startDay, creating.endDay);
-      var hi = Math.max(creating.startDay, creating.endDay);
+      var lo = Math.min(creating.startOffset, creating.endOffset);
+      var hi = Math.max(creating.startOffset, creating.endOffset);
       var ghost = document.createElement('div');
       ghost.className = 'gantt-bar gantt-bar-ghost';
-      ghost.style.left = ((lo - 1) * CELL_WIDTH) + 'px';
+      ghost.style.left = (lo * CELL_WIDTH) + 'px';
       ghost.style.width = ((hi - lo + 1) * CELL_WIDTH - 2) + 'px';
       track.appendChild(ghost);
     }
@@ -371,23 +419,24 @@
       if (!creating) return;
       var rect = track.getBoundingClientRect();
       var x = evt.clientX - rect.left;
-      var dim = daysInMonth(state.project.year_month);
-      var day = clamp(Math.ceil(x / CELL_WIDTH), 1, dim);
-      creating.endDay = day;
+      var maxOffset = getDateRangeArray(state.project.start_date, state.project.end_date).length - 1;
+      var offset = clamp(Math.floor(x / CELL_WIDTH), 0, maxOffset);
+      creating.endOffset = offset;
       renderGhost();
     });
 
     document.addEventListener('mouseup', function () {
       if (!creating) return;
-      var lo = Math.min(creating.startDay, creating.endDay);
-      var hi = Math.max(creating.startDay, creating.endDay);
+      var lo = Math.min(creating.startOffset, creating.endOffset);
+      var hi = Math.max(creating.startOffset, creating.endOffset);
       creating = null;
       var ghost = track.querySelector('.gantt-bar-ghost');
       if (ghost) ghost.remove();
+      var rangeStart = parseISODate(state.project.start_date);
       var newBar = {
         id: uid('bar'),
-        start_day: lo,
-        end_day: hi,
+        start_date: formatISODate(addDays(rangeStart, lo)),
+        end_date: formatISODate(addDays(rangeStart, hi)),
         color: COLOR_PALETTE[row.bars.length % COLOR_PALETTE.length],
         label: ''
       };
@@ -405,14 +454,15 @@
   function attachBarDrag(barEl, row, bar, leftHandle, rightHandle) {
     var mode = null; // 'move' | 'resize-left' | 'resize-right'
     var startX = 0;
-    var origStart = 0;
-    var origEnd = 0;
+    var origStartOffset = 0;
+    var origEndOffset = 0;
 
     function begin(evt, m) {
       mode = m;
       startX = evt.clientX;
-      origStart = bar.start_day;
-      origEnd = bar.end_day;
+      var rangeStart = parseISODate(state.project.start_date);
+      origStartOffset = diffDays(parseISODate(bar.start_date), rangeStart);
+      origEndOffset = diffDays(parseISODate(bar.end_date), rangeStart);
       evt.preventDefault();
       evt.stopPropagation();
     }
@@ -430,22 +480,27 @@
 
     document.addEventListener('mousemove', function (evt) {
       if (!mode) return;
-      var dim = daysInMonth(state.project.year_month);
+      var rangeStart = parseISODate(state.project.start_date);
+      var maxOffset = getDateRangeArray(state.project.start_date, state.project.end_date).length - 1;
       var deltaDays = Math.round((evt.clientX - startX) / CELL_WIDTH);
+      var newStartOffset, newEndOffset;
 
       if (mode === 'move') {
-        var span = origEnd - origStart;
-        var newStart = clamp(origStart + deltaDays, 1, dim - span);
-        bar.start_day = newStart;
-        bar.end_day = newStart + span;
+        var span = origEndOffset - origStartOffset;
+        newStartOffset = clamp(origStartOffset + deltaDays, 0, maxOffset - span);
+        newEndOffset = newStartOffset + span;
       } else if (mode === 'resize-left') {
-        bar.start_day = clamp(origStart + deltaDays, 1, origEnd);
+        newStartOffset = clamp(origStartOffset + deltaDays, 0, origEndOffset);
+        newEndOffset = origEndOffset;
       } else if (mode === 'resize-right') {
-        bar.end_day = clamp(origEnd + deltaDays, origStart, dim);
+        newStartOffset = origStartOffset;
+        newEndOffset = clamp(origEndOffset + deltaDays, origStartOffset, maxOffset);
       }
 
-      barEl.style.left = ((bar.start_day - 1) * CELL_WIDTH) + 'px';
-      barEl.style.width = ((bar.end_day - bar.start_day + 1) * CELL_WIDTH - 2) + 'px';
+      bar.start_date = formatISODate(addDays(rangeStart, newStartOffset));
+      bar.end_date = formatISODate(addDays(rangeStart, newEndOffset));
+      barEl.style.left = (newStartOffset * CELL_WIDTH) + 'px';
+      barEl.style.width = ((newEndOffset - newStartOffset + 1) * CELL_WIDTH - 2) + 'px';
     });
 
     document.addEventListener('mouseup', function () {
@@ -511,51 +566,128 @@
     render();
   });
 
-  // ---------- Project info bindings ----------
-  function buildYearMonthOptions() {
+  // ---------- Project info bindings (date-range picker) ----------
+  function buildYearOptions(selectEl) {
     var currentYear = new Date().getFullYear();
-    el.year.innerHTML = '';
+    selectEl.innerHTML = '';
     for (var y = currentYear - 5; y <= currentYear + 10; y++) {
       var opt = document.createElement('option');
       opt.value = String(y);
       opt.textContent = y + '年';
-      el.year.appendChild(opt);
-    }
-    el.month.innerHTML = '';
-    for (var m = 1; m <= 12; m++) {
-      var mOpt = document.createElement('option');
-      mOpt.value = String(m);
-      mOpt.textContent = m + '月';
-      el.month.appendChild(mOpt);
+      selectEl.appendChild(opt);
     }
   }
 
-  function ensureYearOption(year) {
-    var exists = Array.prototype.some.call(el.year.options, function (opt) {
+  function buildMonthOptions(selectEl) {
+    selectEl.innerHTML = '';
+    for (var m = 1; m <= 12; m++) {
+      var opt = document.createElement('option');
+      opt.value = String(m);
+      opt.textContent = m + '月';
+      selectEl.appendChild(opt);
+    }
+  }
+
+  function buildDayOptions(selectEl, year, month, keepDay) {
+    var dim = daysInMonthOf(year, month);
+    var prevValue = keepDay !== undefined ? keepDay : (Number(selectEl.value) || 1);
+    selectEl.innerHTML = '';
+    for (var d = 1; d <= dim; d++) {
+      var opt = document.createElement('option');
+      opt.value = String(d);
+      opt.textContent = d + '日';
+      selectEl.appendChild(opt);
+    }
+    selectEl.value = String(clamp(prevValue, 1, dim));
+  }
+
+  function ensureYearOption(selectEl, year) {
+    var exists = Array.prototype.some.call(selectEl.options, function (opt) {
       return opt.value === year;
     });
     if (exists) return;
     var opt = document.createElement('option');
     opt.value = year;
     opt.textContent = year + '年';
-    el.year.appendChild(opt);
-    var sorted = Array.prototype.slice.call(el.year.options).sort(function (a, b) {
+    selectEl.appendChild(opt);
+    var sorted = Array.prototype.slice.call(selectEl.options).sort(function (a, b) {
       return Number(a.value) - Number(b.value);
     });
     sorted.forEach(function (o) {
-      el.year.appendChild(o);
+      selectEl.appendChild(o);
     });
   }
 
-  function onYearMonthChange() {
-    var y = el.year.value;
-    var m = String(el.month.value).padStart(2, '0');
-    state.project.year_month = y + '-' + m;
+  function buildDateRangeSelects() {
+    buildYearOptions(el.startYear);
+    buildMonthOptions(el.startMonth);
+    buildYearOptions(el.endYear);
+    buildMonthOptions(el.endMonth);
+  }
+
+  function syncDateSelects(prefix, iso) {
+    var parts = iso.split('-');
+    var year = parts[0];
+    var month = Number(parts[1]);
+    var day = Number(parts[2]);
+    var yearSel = el[prefix + 'Year'];
+    var monthSel = el[prefix + 'Month'];
+    var daySel = el[prefix + 'Day'];
+    ensureYearOption(yearSel, year);
+    yearSel.value = year;
+    monthSel.value = String(month);
+    buildDayOptions(daySel, Number(year), month, day);
+  }
+
+  function getDateFromSelects(prefix) {
+    var y = el[prefix + 'Year'].value;
+    var m = pad2(Number(el[prefix + 'Month'].value));
+    var d = pad2(Number(el[prefix + 'Day'].value));
+    return y + '-' + m + '-' + d;
+  }
+
+  function onDateSelectChange(prefix) {
+    var yearSel = el[prefix + 'Year'];
+    var monthSel = el[prefix + 'Month'];
+    var daySel = el[prefix + 'Day'];
+    buildDayOptions(daySel, Number(yearSel.value), Number(monthSel.value));
+
+    var iso = getDateFromSelects(prefix);
+    if (prefix === 'start') {
+      state.project.start_date = iso;
+      if (state.project.start_date > state.project.end_date) {
+        state.project.end_date = state.project.start_date;
+      }
+    } else {
+      state.project.end_date = iso;
+      if (state.project.end_date < state.project.start_date) {
+        state.project.start_date = state.project.end_date;
+      }
+    }
+
+    var rangeStart = parseISODate(state.project.start_date);
+    var rangeEnd = parseISODate(state.project.end_date);
+    if (diffDays(rangeEnd, rangeStart) + 1 > MAX_RANGE_DAYS) {
+      if (prefix === 'start') {
+        state.project.end_date = formatISODate(addDays(rangeStart, MAX_RANGE_DAYS - 1));
+      } else {
+        state.project.start_date = formatISODate(addDays(rangeEnd, -(MAX_RANGE_DAYS - 1)));
+      }
+      showToast('対象期間は最大' + MAX_RANGE_DAYS + '日までです');
+    }
+
     touch();
     render();
   }
-  el.year.addEventListener('change', onYearMonthChange);
-  el.month.addEventListener('change', onYearMonthChange);
+
+  ['start', 'end'].forEach(function (prefix) {
+    ['Year', 'Month', 'Day'].forEach(function (part) {
+      el[prefix + part].addEventListener('change', function () {
+        onDateSelectChange(prefix);
+      });
+    });
+  });
+
   el.title.addEventListener('input', function () {
     state.project.title = el.title.value;
     touch();
@@ -601,7 +733,7 @@
     var blob = new Blob([dataStr], { type: 'application/json' });
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
-    var fileName = '工程表_' + (state.project.year_month || 'unnamed') + '.json';
+    var fileName = '工程表_' + state.project.start_date + '_' + state.project.end_date + '.json';
     a.href = url;
     a.download = fileName;
     document.body.appendChild(a);
@@ -655,12 +787,19 @@
     reader.readAsText(file, 'utf-8');
   }
 
+  var ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
   function validateData(data) {
     return !!(data && data.meta && data.project && Array.isArray(data.rows) &&
-      typeof data.project.year_month === 'string');
+      ISO_DATE_RE.test(data.project.start_date) &&
+      ISO_DATE_RE.test(data.project.end_date));
   }
 
   function normalizeState(data) {
+    var startDate = data.project.start_date;
+    var endDate = data.project.end_date;
+    if (endDate < startDate) endDate = startDate;
+
     return {
       meta: {
         version: data.meta.version || SCHEMA_VERSION,
@@ -669,7 +808,8 @@
         updated_by: data.meta.updated_by || ''
       },
       project: {
-        year_month: data.project.year_month,
+        start_date: startDate,
+        end_date: endDate,
         title: data.project.title || '',
         manager: data.project.manager || '',
         company: data.project.company || '',
@@ -682,8 +822,8 @@
           bars: (row.bars || []).map(function (bar) {
             return {
               id: bar.id || uid('bar'),
-              start_day: bar.start_day,
-              end_day: bar.end_day,
+              start_date: bar.start_date,
+              end_date: bar.end_date,
               color: bar.color || COLOR_PALETTE[0],
               label: bar.label || ''
             };
@@ -744,7 +884,7 @@
   // ---------- Init ----------
   function init() {
     initTheme();
-    buildYearMonthOptions();
+    buildDateRangeSelects();
     buildColorPalette();
     var restored = restoreDraft();
     render();

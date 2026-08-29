@@ -38,13 +38,26 @@
 <main id="app">
 
   <section class="project-info no-print-border" id="project-info">
-    <div class="field">
-      <label for="input-year">対象年月</label>
-      <div class="year-month-picker">
-        <select id="input-year" aria-label="対象年"></select>
-        <span>年</span>
-        <select id="input-month" aria-label="対象月"></select>
-        <span>月</span>
+    <div class="field date-range-field">
+      <label for="input-start-year">対象期間</label>
+      <div class="date-range-picker">
+        <div class="date-picker">
+          <select id="input-start-year" aria-label="開始年"></select>
+          <span>年</span>
+          <select id="input-start-month" aria-label="開始月"></select>
+          <span>月</span>
+          <select id="input-start-day" aria-label="開始日"></select>
+          <span>日</span>
+        </div>
+        <span class="date-range-sep">〜</span>
+        <div class="date-picker">
+          <select id="input-end-year" aria-label="終了年"></select>
+          <span>年</span>
+          <select id="input-end-month" aria-label="終了月"></select>
+          <span>月</span>
+          <select id="input-end-day" aria-label="終了日"></select>
+          <span>日</span>
+        </div>
       </div>
     </div>
     <div class="field">
@@ -68,7 +81,10 @@
           <span>作業項目</span>
           <button id="btn-add-row" type="button" class="no-print">＋ 行追加</button>
         </div>
-        <div class="days-header" id="days-header"></div>
+        <div class="days-header-wrap">
+          <div class="month-group-header" id="month-group-header"></div>
+          <div class="days-header" id="days-header"></div>
+        </div>
       </div>
       <div class="body-rows" id="body-rows"></div>
     </div>
