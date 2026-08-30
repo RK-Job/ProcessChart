@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>1ヶ月工程表</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232f6fed'/%3E%3Crect x='14' y='18' width='24' height='9' rx='4' fill='%23fff'/%3E%3Crect x='14' y='37' width='36' height='9' rx='4' fill='%23bcd2fb'/%3E%3C/svg%3E">
 <link rel="stylesheet" href="css/style.css">
 <script>
 (function () {
@@ -19,14 +20,24 @@
 <body>
 
 <header class="toolbar no-print">
-  <div class="toolbar-title">1ヶ月工程表</div>
+  <div class="toolbar-brand">
+    <span class="app-logo" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="20" height="20"><rect x="3" y="5" width="12" height="4.5" rx="2" fill="currentColor"/><rect x="3" y="14.5" width="18" height="4.5" rx="2" fill="currentColor" opacity="0.55"/></svg>
+    </span>
+    <div class="toolbar-title-group">
+      <span class="toolbar-title">1ヶ月工程表</span>
+      <span class="toolbar-subtitle">Monthly Process Chart</span>
+    </div>
+  </div>
   <div class="toolbar-actions">
-    <button id="btn-new" type="button">新規作成</button>
-    <button id="btn-open" type="button">JSONを開く</button>
-    <input id="file-input" type="file" accept="application/json,.json" hidden>
-    <button id="btn-save" type="button">JSON保存</button>
-    <button id="btn-print" type="button">印刷 / PDF出力</button>
-    <button id="btn-clear" type="button" class="danger">クリア</button>
+    <div class="toolbar-btn-group">
+      <button id="btn-new" type="button" title="新規作成"><span class="btn-icon" aria-hidden="true">＋</span>新規作成</button>
+      <button id="btn-open" type="button" title="JSONファイルを開く"><span class="btn-icon" aria-hidden="true">📂</span>開く</button>
+      <input id="file-input" type="file" accept="application/json,.json" hidden>
+      <button id="btn-save" type="button" title="JSONとして保存"><span class="btn-icon" aria-hidden="true">💾</span>保存</button>
+      <button id="btn-print" type="button" title="印刷 / PDF出力"><span class="btn-icon" aria-hidden="true">🖨</span>印刷</button>
+      <button id="btn-clear" type="button" class="danger" title="内容をすべてクリア"><span class="btn-icon" aria-hidden="true">🗑</span>クリア</button>
+    </div>
     <div class="theme-switch" role="radiogroup" aria-label="表示テーマ">
       <button type="button" class="theme-option" data-theme-value="system" title="システム設定に合わせる">自動</button>
       <button type="button" class="theme-option" data-theme-value="light" title="ライトモード">ライト</button>
@@ -37,7 +48,9 @@
 
 <main id="app">
 
-  <section class="project-info no-print-border" id="project-info">
+  <section class="panel project-info-panel">
+  <h2 class="panel-title">工事情報</h2>
+  <div class="project-info no-print-border" id="project-info">
     <div class="field date-range-field">
       <label for="input-start-year">対象期間</label>
       <div class="date-range-picker">
@@ -72,14 +85,17 @@
       <label for="input-company">会社名</label>
       <input id="input-company" type="text">
     </div>
+  </div>
   </section>
 
-  <section class="gantt-wrapper">
+  <section class="panel gantt-panel">
+  <h2 class="panel-title">工程表</h2>
+  <div class="gantt-wrapper">
     <div class="chart-grid" id="chart-grid">
       <div class="header-row" id="header-row">
         <div class="label-header">
           <span>作業項目</span>
-          <button id="btn-add-row" type="button" class="no-print">＋ 行追加</button>
+          <button id="btn-add-row" type="button" class="no-print"><span class="btn-icon" aria-hidden="true">＋</span>行追加</button>
         </div>
         <div class="days-header-wrap">
           <div class="month-group-header" id="month-group-header"></div>
@@ -88,11 +104,14 @@
       </div>
       <div class="body-rows" id="body-rows"></div>
     </div>
+  </div>
   </section>
 
-  <section class="remarks-area">
-    <label for="input-remarks">備考</label>
-    <textarea id="input-remarks" rows="3" placeholder="月間の注意事項・特記事項を入力してください"></textarea>
+  <section class="panel remarks-panel">
+    <h2 class="panel-title">備考</h2>
+    <div class="remarks-area">
+      <textarea id="input-remarks" rows="3" placeholder="月間の注意事項・特記事項を入力してください"></textarea>
+    </div>
   </section>
 
 </main>
