@@ -318,8 +318,27 @@ textarea {
 }
 
 .body-rows {
+  position: relative;
   display: flex;
   flex-direction: column;
+}
+
+.dependency-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 6;
+  overflow: visible;
+}
+.dependency-line {
+  stroke: var(--color-text-muted);
+  stroke-width: 1.5;
+  fill: none;
+}
+.dependency-arrowhead {
+  fill: var(--color-text-muted);
 }
 
 .body-row {
@@ -530,6 +549,8 @@ textarea {
   border-radius: 8px;
   padding: 20px 22px;
   width: 380px;
+  max-height: 85vh;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -553,6 +574,33 @@ textarea {
   border-radius: 4px;
   padding: 0;
   border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+.dep-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 140px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  padding: 6px 8px;
+}
+.dep-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  padding: 3px 0;
+  cursor: pointer;
+}
+.dep-item input {
+  flex: 0 0 auto;
+}
+.dep-empty {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  padding: 4px 0;
 }
 
 .modal-actions {

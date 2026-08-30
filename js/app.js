@@ -5,7 +5,7 @@
   var ROW_HEIGHT = 34;
   var STORAGE_KEY = 'monthlyGanttDraft';
   var THEME_STORAGE_KEY = 'monthlyGanttTheme';
-  var SCHEMA_VERSION = '2.1';
+  var SCHEMA_VERSION = '2.2';
   var MAX_RANGE_DAYS = 366;
   var MAX_ROW_LEVEL = 4;
   var INDENT_WIDTH = 16;
@@ -52,6 +52,22 @@
 
   function daysInMonthOf(year, month) {
     return new Date(year, month, 0).getDate();
+  }
+
+  function pruneDependencies(rows) {
+    var validIds = {};
+    rows.forEach(function (row) {
+      row.bars.forEach(function (bar) {
+        validIds[bar.id] = true;
+      });
+    });
+    rows.forEach(function (row) {
+      row.bars.forEach(function (bar) {
+        bar.depends_on = (bar.depends_on || []).filter(function (id) {
+          return id !== bar.id && validIds[id];
+        });
+      });
+    });
   }
 
   function normalizeRowLevels(rows) {
@@ -127,6 +143,7 @@
     modalEndDay: document.getElementById('modal-end-day'),
     modalColor: document.getElementById('modal-color'),
     modalPalette: document.getElementById('color-palette'),
+    modalDeps: document.getElementById('modal-deps'),
     modalOk: document.getElementById('modal-ok'),
     modalCancel: document.getElementById('modal-cancel'),
     modalDelete: document.getElementById('modal-delete'),
@@ -178,6 +195,7 @@
     renderProjectInfo();
     renderHeader();
     renderRows();
+    renderDependencyArrows();
     scheduleAutosave();
   }
 
@@ -329,6 +347,7 @@
             removeCount++;
           }
           state.rows.splice(index, removeCount);
+          pruneDependencies(state.rows);
           touch();
           render();
         }
@@ -402,6 +421,70 @@
     });
 
     return barEl;
+  }
+
+  // ---------- Dependency arrows (先行工程の連結線) ----------
+  function renderDependencyArrows() {
+    var svgNS = 'http://www.w3.org/2000/svg';
+    var svg = document.createElementNS(svgNS, 'svg');
+    svg.setAttribute('class', 'dependency-svg');
+
+    var defs = document.createElementNS(svgNS, 'defs');
+    var marker = document.createElementNS(svgNS, 'marker');
+    marker.setAttribute('id', 'dep-arrowhead');
+    marker.setAttribute('markerWidth', '8');
+    marker.setAttribute('markerHeight', '8');
+    marker.setAttribute('refX', '6');
+    marker.setAttribute('refY', '3');
+    marker.setAttribute('orient', 'auto');
+    var arrowPath = document.createElementNS(svgNS, 'path');
+    arrowPath.setAttribute('d', 'M0,0 L6,3 L0,6 Z');
+    arrowPath.setAttribute('class', 'dependency-arrowhead');
+    marker.appendChild(arrowPath);
+    defs.appendChild(marker);
+    svg.appendChild(defs);
+
+    var bodyRect = el.bodyRows.getBoundingClientRect();
+
+    state.rows.forEach(function (row) {
+      row.bars.forEach(function (bar) {
+        if (!bar.depends_on || !bar.depends_on.length) return;
+        var toEl = el.bodyRows.querySelector('.gantt-bar[data-bar-id="' + bar.id + '"]');
+        if (!toEl) return;
+
+        bar.depends_on.forEach(function (depId) {
+          var fromEl = el.bodyRows.querySelector('.gantt-bar[data-bar-id="' + depId + '"]');
+          if (!fromEl) return;
+
+          var fromRect = fromEl.getBoundingClientRect();
+          var toRect = toEl.getBoundingClientRect();
+          var fromX = fromRect.right - bodyRect.left;
+          var fromY = fromRect.top + fromRect.height / 2 - bodyRect.top;
+          var toX = toRect.left - bodyRect.left;
+          var toY = toRect.top + toRect.height / 2 - bodyRect.top;
+
+          var d;
+          if (Math.abs(fromY - toY) < 1) {
+            d = 'M' + fromX + ' ' + fromY + ' L' + toX + ' ' + toY;
+          } else {
+            var kick = Math.min(14, Math.max(6, (toX - fromX) / 2));
+            var midX = fromX + kick;
+            d = 'M' + fromX + ' ' + fromY + ' L' + midX + ' ' + fromY +
+              ' L' + midX + ' ' + toY + ' L' + toX + ' ' + toY;
+          }
+
+          var path = document.createElementNS(svgNS, 'path');
+          path.setAttribute('d', d);
+          path.setAttribute('class', 'dependency-line');
+          path.setAttribute('marker-end', 'url(#dep-arrowhead)');
+          svg.appendChild(path);
+        });
+      });
+    });
+
+    var existing = el.bodyRows.querySelector('.dependency-svg');
+    if (existing) existing.remove();
+    el.bodyRows.appendChild(svg);
   }
 
   // ---------- Row action menu (indent / outdent / move) ----------
@@ -586,12 +669,14 @@
       bar.end_date = formatISODate(addDays(rangeStart, newEndOffset));
       barEl.style.left = (newStartOffset * CELL_WIDTH) + 'px';
       barEl.style.width = ((newEndOffset - newStartOffset + 1) * CELL_WIDTH - 2) + 'px';
+      renderDependencyArrows();
     });
 
     document.addEventListener('mouseup', function () {
       if (!mode) return;
       mode = null;
       touch();
+      renderDependencyArrows();
       scheduleAutosave();
     });
   }
@@ -613,6 +698,42 @@
     });
   }
 
+  function buildDependencyChecklist(excludeBarId, selectedIds) {
+    el.modalDeps.innerHTML = '';
+    var any = false;
+    state.rows.forEach(function (row) {
+      row.bars.forEach(function (bar) {
+        if (bar.id === excludeBarId) return;
+        any = true;
+        var label = document.createElement('label');
+        label.className = 'dep-item';
+        var cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.value = bar.id;
+        cb.checked = selectedIds.indexOf(bar.id) !== -1;
+        var span = document.createElement('span');
+        span.textContent = row.task_name + '：' + (bar.label || '(無題)') +
+          '（' + bar.start_date + '〜' + bar.end_date + '）';
+        label.appendChild(cb);
+        label.appendChild(span);
+        el.modalDeps.appendChild(label);
+      });
+    });
+    if (!any) {
+      var empty = document.createElement('div');
+      empty.className = 'dep-empty';
+      empty.textContent = '先行工程に指定できる工程がありません';
+      el.modalDeps.appendChild(empty);
+    }
+  }
+
+  function getSelectedDependencies() {
+    return Array.prototype.filter.call(
+      el.modalDeps.querySelectorAll('input[type="checkbox"]'),
+      function (cb) { return cb.checked; }
+    ).map(function (cb) { return cb.value; });
+  }
+
   function openBarModal(row, bar) {
     modalTarget = { row: row, bar: bar, isNew: false };
     el.modalTitle.textContent = '工程の編集';
@@ -620,6 +741,7 @@
     el.modalColor.value = bar.color || COLOR_PALETTE[0];
     syncDateSelects('modalStart', bar.start_date);
     syncDateSelects('modalEnd', bar.end_date);
+    buildDependencyChecklist(bar.id, bar.depends_on || []);
     el.modalDelete.hidden = false;
     el.modal.hidden = false;
     el.modalLabel.focus();
@@ -632,6 +754,7 @@
     el.modalColor.value = COLOR_PALETTE[row.bars.length % COLOR_PALETTE.length];
     syncDateSelects('modalStart', defaultIso);
     syncDateSelects('modalEnd', defaultIso);
+    buildDependencyChecklist(null, []);
     el.modalDelete.hidden = true;
     el.modal.hidden = false;
     el.modalLabel.focus();
@@ -664,20 +787,25 @@
     if (endIso > state.project.end_date) endIso = state.project.end_date;
     if (endIso < startIso) endIso = startIso;
 
+    var depIds = getSelectedDependencies();
+
     if (modalTarget.isNew) {
       modalTarget.row.bars.push({
         id: uid('bar'),
         start_date: startIso,
         end_date: endIso,
         color: el.modalColor.value,
-        label: el.modalLabel.value
+        label: el.modalLabel.value,
+        depends_on: depIds
       });
     } else {
       modalTarget.bar.label = el.modalLabel.value;
       modalTarget.bar.color = el.modalColor.value;
       modalTarget.bar.start_date = startIso;
       modalTarget.bar.end_date = endIso;
+      modalTarget.bar.depends_on = depIds;
     }
+    pruneDependencies(state.rows);
     touch();
     closeBarModal();
     render();
@@ -694,6 +822,7 @@
       return b.id === modalTarget.bar.id;
     });
     if (idx >= 0) modalTarget.row.bars.splice(idx, 1);
+    pruneDependencies(state.rows);
     touch();
     closeBarModal();
     render();
@@ -945,12 +1074,14 @@
             start_date: bar.start_date,
             end_date: bar.end_date,
             color: bar.color || COLOR_PALETTE[0],
-            label: bar.label || ''
+            label: bar.label || '',
+            depends_on: Array.isArray(bar.depends_on) ? bar.depends_on.slice() : []
           };
         })
       };
     });
     normalizeRowLevels(rows);
+    pruneDependencies(rows);
     return rows;
   }
 
