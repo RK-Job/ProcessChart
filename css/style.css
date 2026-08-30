@@ -209,6 +209,9 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.project-info .field {
   flex: 1 1 200px;
 }
 
@@ -383,7 +386,7 @@ textarea {
   flex: 0 0 var(--cell-width);
   border-right: 1px solid var(--color-gridline);
   height: 100%;
-  cursor: crosshair;
+  cursor: context-menu;
 }
 .day-cell.weekend {
   background: var(--color-weekend-cell);
@@ -402,11 +405,6 @@ textarea {
 }
 .gantt-bar:active {
   cursor: grabbing;
-}
-.gantt-bar-ghost {
-  opacity: 0.5;
-  background: #999 !important;
-  pointer-events: none;
 }
 
 .gantt-bar-label {
@@ -471,7 +469,7 @@ textarea {
   background: var(--color-surface);
   border-radius: 8px;
   padding: 20px 22px;
-  width: 320px;
+  width: 380px;
   display: flex;
   flex-direction: column;
   gap: 14px;

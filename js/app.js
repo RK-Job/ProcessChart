@@ -107,7 +107,14 @@
     btnPrint: document.getElementById('btn-print'),
     btnClear: document.getElementById('btn-clear'),
     modal: document.getElementById('bar-modal'),
+    modalTitle: document.getElementById('modal-title'),
     modalLabel: document.getElementById('modal-label'),
+    modalStartYear: document.getElementById('modal-start-year'),
+    modalStartMonth: document.getElementById('modal-start-month'),
+    modalStartDay: document.getElementById('modal-start-day'),
+    modalEndYear: document.getElementById('modal-end-year'),
+    modalEndMonth: document.getElementById('modal-end-month'),
+    modalEndDay: document.getElementById('modal-end-day'),
     modalColor: document.getElementById('modal-color'),
     modalPalette: document.getElementById('color-palette'),
     modalOk: document.getElementById('modal-ok'),
@@ -296,6 +303,7 @@
         dayCell.className = 'day-cell' + (isHoliday ? ' weekend' : '');
         dayCell.style.width = CELL_WIDTH + 'px';
         dayCell.dataset.offset = String(offset);
+        dayCell.title = '右クリックで工程を追加';
         track.appendChild(dayCell);
       });
 
@@ -303,7 +311,7 @@
         track.appendChild(renderBar(row, bar));
       });
 
-      attachTrackDragToCreate(track, row);
+      attachTrackContextMenu(track, row);
 
       rowEl.appendChild(labelCell);
       rowEl.appendChild(track);
@@ -388,61 +396,26 @@
     render();
   }
 
-  // ---------- Bar creation by drag on empty track ----------
-  function attachTrackDragToCreate(track, row) {
-    var creating = null;
+  // ---------- Bar creation via right-click ----------
+  function attachTrackContextMenu(track, row) {
+    track.addEventListener('contextmenu', function (evt) {
+      evt.preventDefault();
 
-    track.addEventListener('mousedown', function (evt) {
-      if (evt.target.closest('.gantt-bar')) return;
+      var barTarget = evt.target.closest('.gantt-bar');
+      if (barTarget) {
+        var bar = row.bars.find(function (b) {
+          return b.id === barTarget.dataset.barId;
+        });
+        if (bar) openBarModal(row, bar);
+        return;
+      }
+
       var cell = evt.target.closest('.day-cell');
       if (!cell) return;
       var offset = Number(cell.dataset.offset);
-      creating = { startOffset: offset, endOffset: offset };
-      renderGhost();
-      evt.preventDefault();
-    });
-
-    function renderGhost() {
-      var existing = track.querySelector('.gantt-bar-ghost');
-      if (existing) existing.remove();
-      if (!creating) return;
-      var lo = Math.min(creating.startOffset, creating.endOffset);
-      var hi = Math.max(creating.startOffset, creating.endOffset);
-      var ghost = document.createElement('div');
-      ghost.className = 'gantt-bar gantt-bar-ghost';
-      ghost.style.left = (lo * CELL_WIDTH) + 'px';
-      ghost.style.width = ((hi - lo + 1) * CELL_WIDTH - 2) + 'px';
-      track.appendChild(ghost);
-    }
-
-    document.addEventListener('mousemove', function (evt) {
-      if (!creating) return;
-      var rect = track.getBoundingClientRect();
-      var x = evt.clientX - rect.left;
-      var maxOffset = getDateRangeArray(state.project.start_date, state.project.end_date).length - 1;
-      var offset = clamp(Math.floor(x / CELL_WIDTH), 0, maxOffset);
-      creating.endOffset = offset;
-      renderGhost();
-    });
-
-    document.addEventListener('mouseup', function () {
-      if (!creating) return;
-      var lo = Math.min(creating.startOffset, creating.endOffset);
-      var hi = Math.max(creating.startOffset, creating.endOffset);
-      creating = null;
-      var ghost = track.querySelector('.gantt-bar-ghost');
-      if (ghost) ghost.remove();
       var rangeStart = parseISODate(state.project.start_date);
-      var newBar = {
-        id: uid('bar'),
-        start_date: formatISODate(addDays(rangeStart, lo)),
-        end_date: formatISODate(addDays(rangeStart, hi)),
-        color: COLOR_PALETTE[row.bars.length % COLOR_PALETTE.length],
-        label: ''
-      };
-      row.bars.push(newBar);
-      touch();
-      render();
+      var iso = formatISODate(addDays(rangeStart, offset));
+      openNewBarModal(row, iso);
     });
   }
 
@@ -511,8 +484,8 @@
     });
   }
 
-  // ---------- Bar modal (label / color / delete) ----------
-  var modalTarget = null; // { row, bar }
+  // ---------- Bar modal (create / edit: label, period, color, delete) ----------
+  var modalTarget = null; // { row, bar, isNew }
 
   function buildColorPalette() {
     el.modalPalette.innerHTML = '';
@@ -529,9 +502,25 @@
   }
 
   function openBarModal(row, bar) {
-    modalTarget = { row: row, bar: bar };
+    modalTarget = { row: row, bar: bar, isNew: false };
+    el.modalTitle.textContent = '工程の編集';
     el.modalLabel.value = bar.label || '';
     el.modalColor.value = bar.color || COLOR_PALETTE[0];
+    syncDateSelects('modalStart', bar.start_date);
+    syncDateSelects('modalEnd', bar.end_date);
+    el.modalDelete.hidden = false;
+    el.modal.hidden = false;
+    el.modalLabel.focus();
+  }
+
+  function openNewBarModal(row, defaultIso) {
+    modalTarget = { row: row, bar: null, isNew: true };
+    el.modalTitle.textContent = '工程の追加';
+    el.modalLabel.value = '';
+    el.modalColor.value = COLOR_PALETTE[row.bars.length % COLOR_PALETTE.length];
+    syncDateSelects('modalStart', defaultIso);
+    syncDateSelects('modalEnd', defaultIso);
+    el.modalDelete.hidden = true;
     el.modal.hidden = false;
     el.modalLabel.focus();
   }
@@ -541,10 +530,42 @@
     modalTarget = null;
   }
 
+  ['modalStart', 'modalEnd'].forEach(function (prefix) {
+    ['Year', 'Month'].forEach(function (part) {
+      el[prefix + part].addEventListener('change', function () {
+        buildDayOptions(el[prefix + 'Day'], Number(el[prefix + 'Year'].value), Number(el[prefix + 'Month'].value));
+      });
+    });
+  });
+
   el.modalOk.addEventListener('click', function () {
     if (!modalTarget) return;
-    modalTarget.bar.label = el.modalLabel.value;
-    modalTarget.bar.color = el.modalColor.value;
+
+    var startIso = getDateFromSelects('modalStart');
+    var endIso = getDateFromSelects('modalEnd');
+    if (endIso < startIso) {
+      var tmp = startIso;
+      startIso = endIso;
+      endIso = tmp;
+    }
+    if (startIso < state.project.start_date) startIso = state.project.start_date;
+    if (endIso > state.project.end_date) endIso = state.project.end_date;
+    if (endIso < startIso) endIso = startIso;
+
+    if (modalTarget.isNew) {
+      modalTarget.row.bars.push({
+        id: uid('bar'),
+        start_date: startIso,
+        end_date: endIso,
+        color: el.modalColor.value,
+        label: el.modalLabel.value
+      });
+    } else {
+      modalTarget.bar.label = el.modalLabel.value;
+      modalTarget.bar.color = el.modalColor.value;
+      modalTarget.bar.start_date = startIso;
+      modalTarget.bar.end_date = endIso;
+    }
     touch();
     closeBarModal();
     render();
@@ -556,7 +577,7 @@
   });
 
   el.modalDelete.addEventListener('click', function () {
-    if (!modalTarget) return;
+    if (!modalTarget || modalTarget.isNew) return;
     var idx = modalTarget.row.bars.findIndex(function (b) {
       return b.id === modalTarget.bar.id;
     });
@@ -623,6 +644,10 @@
     buildMonthOptions(el.startMonth);
     buildYearOptions(el.endYear);
     buildMonthOptions(el.endMonth);
+    buildYearOptions(el.modalStartYear);
+    buildMonthOptions(el.modalStartMonth);
+    buildYearOptions(el.modalEndYear);
+    buildMonthOptions(el.modalEndMonth);
   }
 
   function syncDateSelects(prefix, iso) {

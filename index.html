@@ -65,7 +65,7 @@
       <input id="input-title" type="text" placeholder="〇〇邸新築工事">
     </div>
     <div class="field">
-      <label for="input-manager">現場代理人</label>
+      <label for="input-manager">担当者</label>
       <input id="input-manager" type="text" placeholder="山田 太郎">
     </div>
     <div class="field">
@@ -99,10 +99,32 @@
 
 <div id="bar-modal" class="modal-overlay no-print" hidden>
   <div class="modal">
-    <h3>工程バーの編集</h3>
+    <h3 id="modal-title">工程の追加</h3>
     <div class="field">
       <label for="modal-label">工程名</label>
-      <input id="modal-label" type="text">
+      <input id="modal-label" type="text" placeholder="例: 外壁塗装">
+    </div>
+    <div class="field">
+      <label for="modal-start-year">日程（いつから〜いつまで）</label>
+      <div class="date-range-picker">
+        <div class="date-picker">
+          <select id="modal-start-year" aria-label="開始年"></select>
+          <span>年</span>
+          <select id="modal-start-month" aria-label="開始月"></select>
+          <span>月</span>
+          <select id="modal-start-day" aria-label="開始日"></select>
+          <span>日</span>
+        </div>
+        <span class="date-range-sep">〜</span>
+        <div class="date-picker">
+          <select id="modal-end-year" aria-label="終了年"></select>
+          <span>年</span>
+          <select id="modal-end-month" aria-label="終了月"></select>
+          <span>月</span>
+          <select id="modal-end-day" aria-label="終了日"></select>
+          <span>日</span>
+        </div>
+      </div>
     </div>
     <div class="field">
       <label>カラー</label>
