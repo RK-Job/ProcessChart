@@ -131,7 +131,12 @@
     modalCancel: document.getElementById('modal-cancel'),
     modalDelete: document.getElementById('modal-delete'),
     toast: document.getElementById('toast'),
-    themeOptions: document.querySelectorAll('.theme-option')
+    themeOptions: document.querySelectorAll('.theme-option'),
+    rowMenu: document.getElementById('row-menu'),
+    rowMenuIndent: document.getElementById('row-menu-indent'),
+    rowMenuOutdent: document.getElementById('row-menu-outdent'),
+    rowMenuUp: document.getElementById('row-menu-up'),
+    rowMenuDown: document.getElementById('row-menu-down')
   };
 
   // ---------- Theme (light / dark / system) ----------
@@ -303,46 +308,13 @@
       var rowControls = document.createElement('span');
       rowControls.className = 'row-controls no-print';
 
-      var outdentBtn = document.createElement('button');
-      outdentBtn.type = 'button';
-      outdentBtn.textContent = '⇤';
-      outdentBtn.title = 'インデントを解除';
-      outdentBtn.disabled = level === 0;
-      outdentBtn.addEventListener('click', function () {
-        row.level = Math.max(level - 1, 0);
-        normalizeRowLevels(state.rows);
-        touch();
-        render();
-      });
-
-      var indentBtn = document.createElement('button');
-      indentBtn.type = 'button';
-      indentBtn.textContent = '⇥';
-      indentBtn.title = '子項目にする（インデント）';
-      indentBtn.disabled = index === 0 || level >= (state.rows[index - 1].level || 0) + 1 || level >= MAX_ROW_LEVEL;
-      indentBtn.addEventListener('click', function () {
-        row.level = Math.min(level + 1, MAX_ROW_LEVEL);
-        normalizeRowLevels(state.rows);
-        touch();
-        render();
-      });
-
-      var upBtn = document.createElement('button');
-      upBtn.type = 'button';
-      upBtn.textContent = '↑';
-      upBtn.title = '上へ移動';
-      upBtn.disabled = index === 0;
-      upBtn.addEventListener('click', function () {
-        moveRow(index, index - 1);
-      });
-
-      var downBtn = document.createElement('button');
-      downBtn.type = 'button';
-      downBtn.textContent = '↓';
-      downBtn.title = '下へ移動';
-      downBtn.disabled = index === state.rows.length - 1;
-      downBtn.addEventListener('click', function () {
-        moveRow(index, index + 1);
+      var menuBtn = document.createElement('button');
+      menuBtn.type = 'button';
+      menuBtn.textContent = '▼';
+      menuBtn.title = '操作メニュー（インデント・移動）';
+      menuBtn.addEventListener('click', function (evt) {
+        evt.stopPropagation();
+        openRowMenu(menuBtn, index, level);
       });
 
       var delBtn = document.createElement('button');
@@ -362,10 +334,7 @@
         }
       });
 
-      rowControls.appendChild(outdentBtn);
-      rowControls.appendChild(indentBtn);
-      rowControls.appendChild(upBtn);
-      rowControls.appendChild(downBtn);
+      rowControls.appendChild(menuBtn);
       rowControls.appendChild(delBtn);
       labelCell.appendChild(rowControls);
 
@@ -434,6 +403,68 @@
 
     return barEl;
   }
+
+  // ---------- Row action menu (indent / outdent / move) ----------
+  var rowMenuTarget = null; // { index, level }
+
+  function openRowMenu(anchorEl, index, level) {
+    rowMenuTarget = { index: index, level: level };
+
+    el.rowMenuIndent.disabled = index === 0 ||
+      level >= (state.rows[index - 1].level || 0) + 1 ||
+      level >= MAX_ROW_LEVEL;
+    el.rowMenuOutdent.disabled = level === 0;
+    el.rowMenuUp.disabled = index === 0;
+    el.rowMenuDown.disabled = index === state.rows.length - 1;
+
+    var rect = anchorEl.getBoundingClientRect();
+    el.rowMenu.style.left = rect.left + 'px';
+    el.rowMenu.style.top = rect.bottom + 4 + 'px';
+    el.rowMenu.hidden = false;
+  }
+
+  function closeRowMenu() {
+    el.rowMenu.hidden = true;
+    rowMenuTarget = null;
+  }
+
+  el.rowMenuIndent.addEventListener('click', function () {
+    if (!rowMenuTarget) return;
+    var row = state.rows[rowMenuTarget.index];
+    row.level = Math.min(rowMenuTarget.level + 1, MAX_ROW_LEVEL);
+    normalizeRowLevels(state.rows);
+    touch();
+    closeRowMenu();
+    render();
+  });
+
+  el.rowMenuOutdent.addEventListener('click', function () {
+    if (!rowMenuTarget) return;
+    var row = state.rows[rowMenuTarget.index];
+    row.level = Math.max(rowMenuTarget.level - 1, 0);
+    normalizeRowLevels(state.rows);
+    touch();
+    closeRowMenu();
+    render();
+  });
+
+  el.rowMenuUp.addEventListener('click', function () {
+    if (!rowMenuTarget) return;
+    var index = rowMenuTarget.index;
+    closeRowMenu();
+    moveRow(index, index - 1);
+  });
+
+  el.rowMenuDown.addEventListener('click', function () {
+    if (!rowMenuTarget) return;
+    var index = rowMenuTarget.index;
+    closeRowMenu();
+    moveRow(index, index + 1);
+  });
+
+  document.addEventListener('click', function (evt) {
+    if (!el.rowMenu.hidden && !el.rowMenu.contains(evt.target)) closeRowMenu();
+  });
 
   // ---------- Row reorder (create/delete/move) ----------
   function moveRow(from, to) {
