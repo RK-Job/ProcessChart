@@ -314,7 +314,7 @@
       input.type = 'text';
       input.className = 'row-label-input';
       input.value = row.task_name;
-      input.placeholder = '作業項目名';
+      input.placeholder = '(例)基本計画';
       input.addEventListener('input', function () {
         row.task_name = input.value;
         touch();
