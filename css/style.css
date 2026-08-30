@@ -702,6 +702,35 @@ textarea:focus {
   z-index: 200;
 }
 
+/* ---------- Autosave status ---------- */
+.autosave-status {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  z-index: 150;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-muted);
+  font-size: 11px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+}
+.autosave-status[hidden] {
+  display: none;
+}
+.autosave-status::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #3fb950;
+  flex: 0 0 auto;
+}
+
 /* ---------- Theme switch ---------- */
 .theme-switch {
   display: flex;
