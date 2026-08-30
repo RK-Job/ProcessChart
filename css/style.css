@@ -16,7 +16,7 @@
   --color-gridline: #edf0f2;
   --color-toast-bg: #1f2933;
   --color-toast-text: #fff;
-  --label-col-width: 240px;
+  --label-col-width: 280px;
   --cell-width: 28px;
   --row-height: 34px;
 }
@@ -346,7 +346,37 @@ textarea {
   height: var(--row-height);
 }
 
+.row-label-main {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.row-toggle {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  font-size: 10px;
+  line-height: 1;
+}
+.row-toggle:hover {
+  background: transparent;
+  color: var(--color-text);
+}
+.row-toggle-spacer {
+  flex: 0 0 auto;
+  display: inline-block;
+  width: 16px;
+}
+
 .drag-handle {
+  flex: 0 0 auto;
   cursor: grab;
   color: var(--color-text-muted);
   user-select: none;
@@ -366,6 +396,7 @@ textarea {
 }
 
 .row-controls {
+  flex: 0 0 auto;
   display: flex;
   gap: 2px;
 }

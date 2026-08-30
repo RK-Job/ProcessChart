@@ -5,8 +5,10 @@
   var ROW_HEIGHT = 34;
   var STORAGE_KEY = 'monthlyGanttDraft';
   var THEME_STORAGE_KEY = 'monthlyGanttTheme';
-  var SCHEMA_VERSION = '2.0';
+  var SCHEMA_VERSION = '2.1';
   var MAX_RANGE_DAYS = 366;
+  var MAX_ROW_LEVEL = 4;
+  var INDENT_WIDTH = 16;
 
   var COLOR_PALETTE = [
     '#4a90d9', '#e07b39', '#5cb85c', '#d9534f',
@@ -50,6 +52,14 @@
 
   function daysInMonthOf(year, month) {
     return new Date(year, month, 0).getDate();
+  }
+
+  function normalizeRowLevels(rows) {
+    rows.forEach(function (row, i) {
+      var lvl = row.level || 0;
+      var maxAllowed = i === 0 ? 0 : (rows[i - 1].level || 0) + 1;
+      row.level = clamp(lvl, 0, Math.min(maxAllowed, MAX_ROW_LEVEL));
+    });
   }
 
   function getDateRangeArray(startISO, endISO) {
@@ -226,20 +236,56 @@
     var totalWidth = dates.length * CELL_WIDTH;
     el.bodyRows.innerHTML = '';
 
+    var ancestorStack = []; // { level, blocksChildren }
+
     state.rows.forEach(function (row, index) {
+      var level = row.level || 0;
+      while (ancestorStack.length && ancestorStack[ancestorStack.length - 1].level >= level) {
+        ancestorStack.pop();
+      }
+      var hiddenByAncestor = ancestorStack.some(function (a) {
+        return a.blocksChildren;
+      });
+      var hasChildren = index + 1 < state.rows.length && (state.rows[index + 1].level || 0) > level;
+      ancestorStack.push({ level: level, blocksChildren: hiddenByAncestor || !!row.collapsed });
+
+      if (hiddenByAncestor) return;
+
       var rowEl = document.createElement('div');
       rowEl.className = 'body-row';
       rowEl.draggable = true;
       rowEl.dataset.rowId = row.id;
+      rowEl.dataset.rowIndex = String(index);
 
       // --- label cell ---
       var labelCell = document.createElement('div');
       labelCell.className = 'row-label';
 
+      var mainGroup = document.createElement('span');
+      mainGroup.className = 'row-label-main';
+      mainGroup.style.marginLeft = (level * INDENT_WIDTH) + 'px';
+
+      if (hasChildren) {
+        var toggleBtn = document.createElement('button');
+        toggleBtn.type = 'button';
+        toggleBtn.className = 'row-toggle no-print';
+        toggleBtn.textContent = row.collapsed ? '▸' : '▾';
+        toggleBtn.title = row.collapsed ? '展開' : '折りたたむ';
+        toggleBtn.addEventListener('click', function () {
+          row.collapsed = !row.collapsed;
+          render();
+        });
+        mainGroup.appendChild(toggleBtn);
+      } else {
+        var spacer = document.createElement('span');
+        spacer.className = 'row-toggle-spacer';
+        mainGroup.appendChild(spacer);
+      }
+
       var handle = document.createElement('span');
       handle.className = 'drag-handle no-print';
       handle.textContent = '⠿';
-      labelCell.appendChild(handle);
+      mainGroup.appendChild(handle);
 
       var input = document.createElement('input');
       input.type = 'text';
@@ -250,10 +296,36 @@
         row.task_name = input.value;
         touch();
       });
-      labelCell.appendChild(input);
+      mainGroup.appendChild(input);
+
+      labelCell.appendChild(mainGroup);
 
       var rowControls = document.createElement('span');
       rowControls.className = 'row-controls no-print';
+
+      var outdentBtn = document.createElement('button');
+      outdentBtn.type = 'button';
+      outdentBtn.textContent = '⇤';
+      outdentBtn.title = 'インデントを解除';
+      outdentBtn.disabled = level === 0;
+      outdentBtn.addEventListener('click', function () {
+        row.level = Math.max(level - 1, 0);
+        normalizeRowLevels(state.rows);
+        touch();
+        render();
+      });
+
+      var indentBtn = document.createElement('button');
+      indentBtn.type = 'button';
+      indentBtn.textContent = '⇥';
+      indentBtn.title = '子項目にする（インデント）';
+      indentBtn.disabled = index === 0 || level >= (state.rows[index - 1].level || 0) + 1 || level >= MAX_ROW_LEVEL;
+      indentBtn.addEventListener('click', function () {
+        row.level = Math.min(level + 1, MAX_ROW_LEVEL);
+        normalizeRowLevels(state.rows);
+        touch();
+        render();
+      });
 
       var upBtn = document.createElement('button');
       upBtn.type = 'button';
@@ -278,13 +350,20 @@
       delBtn.textContent = '✕';
       delBtn.title = '行を削除';
       delBtn.addEventListener('click', function () {
-        if (confirm('この作業項目を削除しますか？')) {
-          state.rows.splice(index, 1);
+        if (confirm('この作業項目を削除しますか？（子項目がある場合は子項目も削除されます）')) {
+          var removeCount = 1;
+          while (index + removeCount < state.rows.length &&
+            (state.rows[index + removeCount].level || 0) > level) {
+            removeCount++;
+          }
+          state.rows.splice(index, removeCount);
           touch();
           render();
         }
       });
 
+      rowControls.appendChild(outdentBtn);
+      rowControls.appendChild(indentBtn);
       rowControls.appendChild(upBtn);
       rowControls.appendChild(downBtn);
       rowControls.appendChild(delBtn);
@@ -358,9 +437,10 @@
 
   // ---------- Row reorder (create/delete/move) ----------
   function moveRow(from, to) {
-    if (to < 0 || to >= state.rows.length) return;
+    if (to < 0 || to >= state.rows.length || from === to) return;
     var item = state.rows.splice(from, 1)[0];
     state.rows.splice(to, 0, item);
+    normalizeRowLevels(state.rows);
     touch();
     render();
   }
@@ -368,9 +448,9 @@
   var dragSrcIndex = null;
   function attachRowReorderDnD() {
     var rowEls = el.bodyRows.querySelectorAll('.body-row');
-    rowEls.forEach(function (rowEl, idx) {
+    rowEls.forEach(function (rowEl) {
       rowEl.addEventListener('dragstart', function (evt) {
-        dragSrcIndex = idx;
+        dragSrcIndex = Number(rowEl.dataset.rowIndex);
         evt.dataTransfer.effectAllowed = 'move';
         rowEl.classList.add('dragging');
       });
@@ -384,14 +464,15 @@
       });
       rowEl.addEventListener('drop', function (evt) {
         evt.preventDefault();
-        if (dragSrcIndex === null || dragSrcIndex === idx) return;
-        moveRow(dragSrcIndex, idx);
+        var targetIndex = Number(rowEl.dataset.rowIndex);
+        if (dragSrcIndex === null || dragSrcIndex === targetIndex) return;
+        moveRow(dragSrcIndex, targetIndex);
       });
     });
   }
 
   function addRow() {
-    state.rows.push({ id: uid('row'), task_name: '', bars: [] });
+    state.rows.push({ id: uid('row'), task_name: '', bars: [], level: 0, collapsed: false });
     touch();
     render();
   }
@@ -820,6 +901,28 @@
       ISO_DATE_RE.test(data.project.end_date));
   }
 
+  function normalizeLoadedRows(rawRows) {
+    var rows = rawRows.map(function (row) {
+      return {
+        id: row.id || uid('row'),
+        task_name: row.task_name || '',
+        level: Number(row.level) || 0,
+        collapsed: !!row.collapsed,
+        bars: (row.bars || []).map(function (bar) {
+          return {
+            id: bar.id || uid('bar'),
+            start_date: bar.start_date,
+            end_date: bar.end_date,
+            color: bar.color || COLOR_PALETTE[0],
+            label: bar.label || ''
+          };
+        })
+      };
+    });
+    normalizeRowLevels(rows);
+    return rows;
+  }
+
   function normalizeState(data) {
     var startDate = data.project.start_date;
     var endDate = data.project.end_date;
@@ -840,21 +943,7 @@
         company: data.project.company || '',
         remarks: data.project.remarks || ''
       },
-      rows: (data.rows || []).map(function (row) {
-        return {
-          id: row.id || uid('row'),
-          task_name: row.task_name || '',
-          bars: (row.bars || []).map(function (bar) {
-            return {
-              id: bar.id || uid('bar'),
-              start_date: bar.start_date,
-              end_date: bar.end_date,
-              color: bar.color || COLOR_PALETTE[0],
-              label: bar.label || ''
-            };
-          })
-        };
-      })
+      rows: normalizeLoadedRows(data.rows || [])
     };
   }
 
