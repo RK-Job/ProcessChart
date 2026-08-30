@@ -148,6 +148,7 @@
     modalCancel: document.getElementById('modal-cancel'),
     modalDelete: document.getElementById('modal-delete'),
     toast: document.getElementById('toast'),
+    autosaveStatus: document.getElementById('autosave-status'),
     themeOptions: document.querySelectorAll('.theme-option'),
     rowMenu: document.getElementById('row-menu'),
     rowMenuIndent: document.getElementById('row-menu-indent'),
@@ -1120,10 +1121,18 @@
     autosaveTimer = setTimeout(function () {
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+        showAutosaveStatus();
       } catch (e) {
         // localStorage unavailable or quota exceeded: ignore silently
       }
     }, 500);
+  }
+
+  function showAutosaveStatus() {
+    if (!el.autosaveStatus) return;
+    var now = new Date();
+    el.autosaveStatus.textContent = '自動保存済み ' + pad2(now.getHours()) + ':' + pad2(now.getMinutes()) + ':' + pad2(now.getSeconds());
+    el.autosaveStatus.hidden = false;
   }
 
   function restoreDraft() {
