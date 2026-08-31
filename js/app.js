@@ -5,7 +5,7 @@
   var ROW_HEIGHT = 34;
   var STORAGE_KEY = 'monthlyGanttDraft';
   var THEME_STORAGE_KEY = 'monthlyGanttTheme';
-  var SCHEMA_VERSION = '2.2';
+  var SCHEMA_VERSION = '2.3';
   var MAX_RANGE_DAYS = 366;
   var MAX_ROW_LEVEL = 4;
   var INDENT_WIDTH = 16;
@@ -104,6 +104,11 @@
         title: '',
         manager: '',
         company: '',
+        floor_area: '',
+        floors: '',
+        structure: '',
+        fire_resistance: '',
+        fire_use_code: '',
         remarks: ''
       },
       rows: []
@@ -121,6 +126,11 @@
     title: document.getElementById('input-title'),
     manager: document.getElementById('input-manager'),
     company: document.getElementById('input-company'),
+    floorArea: document.getElementById('input-floor-area'),
+    floors: document.getElementById('input-floors'),
+    structure: document.getElementById('input-structure'),
+    fireResistance: document.getElementById('input-fire-resistance'),
+    fireUseCode: document.getElementById('input-fire-use-code'),
     remarks: document.getElementById('input-remarks'),
     monthGroupHeader: document.getElementById('month-group-header'),
     daysHeader: document.getElementById('days-header'),
@@ -206,6 +216,11 @@
     el.title.value = state.project.title;
     el.manager.value = state.project.manager;
     el.company.value = state.project.company;
+    el.floorArea.value = state.project.floor_area;
+    el.floors.value = state.project.floors;
+    el.structure.value = state.project.structure;
+    el.fireResistance.value = state.project.fire_resistance;
+    el.fireUseCode.value = state.project.fire_use_code;
     el.remarks.value = state.project.remarks;
   }
 
@@ -958,18 +973,47 @@
   el.title.addEventListener('input', function () {
     state.project.title = el.title.value;
     touch();
+    scheduleAutosave();
   });
   el.manager.addEventListener('input', function () {
     state.project.manager = el.manager.value;
     touch();
+    scheduleAutosave();
   });
   el.company.addEventListener('input', function () {
     state.project.company = el.company.value;
     touch();
+    scheduleAutosave();
+  });
+  el.floorArea.addEventListener('input', function () {
+    state.project.floor_area = el.floorArea.value;
+    touch();
+    scheduleAutosave();
+  });
+  el.floors.addEventListener('input', function () {
+    state.project.floors = el.floors.value;
+    touch();
+    scheduleAutosave();
+  });
+  el.structure.addEventListener('input', function () {
+    state.project.structure = el.structure.value;
+    touch();
+    scheduleAutosave();
+  });
+  el.fireResistance.addEventListener('change', function () {
+    state.project.fire_resistance = el.fireResistance.value;
+    touch();
+    scheduleAutosave();
+  });
+  el.fireUseCode.addEventListener('input', function () {
+    state.project.fire_use_code = el.fireUseCode.value;
+    touch();
+    scheduleAutosave();
   });
   el.remarks.addEventListener('input', function () {
     state.project.remarks = el.remarks.value;
     touch();
+    scheduleAutosave();
   });
 
   el.btnAddRow.addEventListener('click', addRow);
@@ -1104,6 +1148,11 @@
         title: data.project.title || '',
         manager: data.project.manager || '',
         company: data.project.company || '',
+        floor_area: data.project.floor_area || '',
+        floors: data.project.floors || '',
+        structure: data.project.structure || '',
+        fire_resistance: data.project.fire_resistance || '',
+        fire_use_code: data.project.fire_use_code || '',
         remarks: data.project.remarks || ''
       },
       rows: normalizeLoadedRows(data.rows || [])
