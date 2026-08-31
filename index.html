@@ -49,7 +49,7 @@
 <main id="app">
 
   <section class="panel project-info-panel">
-  <h2 class="panel-title">工事情報</h2>
+  <h2 class="panel-title">設計情報</h2>
   <div class="project-info no-print-border" id="project-info">
     <div class="field date-range-field">
       <label for="input-start-year">対象期間</label>
@@ -84,6 +84,34 @@
     <div class="field">
       <label for="input-company">会社名</label>
       <input id="input-company" type="text">
+    </div>
+    <div class="field">
+      <label for="input-floor-area">延床面積</label>
+      <div class="field-with-unit">
+        <input id="input-floor-area" type="text" inputmode="decimal" placeholder="(例)120.50">
+        <span class="field-unit">m&sup2;</span>
+      </div>
+    </div>
+    <div class="field">
+      <label for="input-floors">階数</label>
+      <input id="input-floors" type="text" placeholder="(例)地上3階">
+    </div>
+    <div class="field">
+      <label for="input-structure">建築構造</label>
+      <input id="input-structure" type="text" placeholder="(例)木造">
+    </div>
+    <div class="field">
+      <label for="input-fire-resistance">耐火構造</label>
+      <select id="input-fire-resistance">
+        <option value="">未選択</option>
+        <option value="耐火建築物">耐火建築物</option>
+        <option value="準耐火建築物">準耐火建築物</option>
+        <option value="その他">その他</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="input-fire-use-code">消防用途番号</label>
+      <input id="input-fire-use-code" type="text" placeholder="(例)(1)項イ">
     </div>
   </div>
   </section>
