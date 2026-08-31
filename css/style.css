@@ -303,8 +303,24 @@ textarea:focus {
 }
 
 .field input,
+.field select,
 .field textarea {
   width: 100%;
+}
+
+.field-with-unit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.field-with-unit input {
+  width: auto;
+  flex: 1;
+}
+.field-unit {
+  color: var(--color-text-muted);
+  font-size: 12px;
+  flex: 0 0 auto;
 }
 
 /* ---------- Gantt chart ---------- */
