@@ -13,7 +13,7 @@
   --color-sunday: #fdecec;
   --color-sunday-text: #d9534f;
   --color-weekend-cell: #f8f9fb;
-  --color-gridline: #edf0f2;
+  --color-gridline: #f2f4f6;
   --color-toast-bg: #1f2933;
   --color-toast-text: #fff;
   --label-col-width: 280px;
@@ -37,7 +37,7 @@
     --color-sunday: #3a1e1e;
     --color-sunday-text: #ea8f8b;
     --color-weekend-cell: #20262e;
-    --color-gridline: #262c34;
+    --color-gridline: #20252b;
     --color-toast-bg: #e6e9ed;
     --color-toast-text: #14181d;
   }
@@ -58,7 +58,7 @@
   --color-sunday: #3a1e1e;
   --color-sunday-text: #ea8f8b;
   --color-weekend-cell: #20262e;
-  --color-gridline: #262c34;
+  --color-gridline: #20252b;
   --color-toast-bg: #e6e9ed;
   --color-toast-text: #14181d;
 }
@@ -390,7 +390,7 @@ textarea:focus {
 
 .day-header-cell {
   flex: 0 0 var(--cell-width);
-  border-right: 1px solid var(--color-border);
+  border-right: 1px solid var(--color-gridline);
   text-align: center;
   padding: 4px 0;
 }
