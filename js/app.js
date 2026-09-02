@@ -5,7 +5,7 @@
   var ROW_HEIGHT = 34;
   var STORAGE_KEY = 'monthlyGanttDraft';
   var THEME_STORAGE_KEY = 'monthlyGanttTheme';
-  var SCHEMA_VERSION = '2.3';
+  var SCHEMA_VERSION = '2.4';
   var MAX_RANGE_DAYS = 366;
   var MAX_ROW_LEVEL = 4;
   var INDENT_WIDTH = 16;
@@ -326,14 +326,28 @@
       handle.textContent = '⠿';
       mainGroup.appendChild(handle);
 
+      var doneCheckbox = document.createElement('input');
+      doneCheckbox.type = 'checkbox';
+      doneCheckbox.className = 'row-done-checkbox';
+      doneCheckbox.checked = !!row.done;
+      doneCheckbox.title = '完了';
+      doneCheckbox.addEventListener('change', function () {
+        row.done = doneCheckbox.checked;
+        touch();
+        render();
+      });
+      mainGroup.appendChild(doneCheckbox);
+
       var input = document.createElement('input');
       input.type = 'text';
       input.className = 'row-label-input';
+      if (row.done) input.classList.add('is-done');
       input.value = row.task_name;
       input.placeholder = '(例)基本計画';
       input.addEventListener('input', function () {
         row.task_name = input.value;
         touch();
+        scheduleAutosave();
       });
       mainGroup.appendChild(input);
 
@@ -602,7 +616,7 @@
   }
 
   function addRow() {
-    state.rows.push({ id: uid('row'), task_name: '', bars: [], level: 0, collapsed: false });
+    state.rows.push({ id: uid('row'), task_name: '', bars: [], level: 0, collapsed: false, done: false });
     touch();
     render();
   }
@@ -1113,6 +1127,7 @@
         task_name: row.task_name || '',
         level: Number(row.level) || 0,
         collapsed: !!row.collapsed,
+        done: !!row.done,
         bars: (row.bars || []).map(function (bar) {
           return {
             id: bar.id || uid('bar'),
